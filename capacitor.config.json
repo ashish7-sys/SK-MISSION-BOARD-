@@ -1,0 +1,6 @@
+{
+  "appId": "com.skmissionboard.app",
+  "appName": "SK MISSION BOARD",
+  "webDir": "dist",
+  "bundledWebRuntime": false
+}

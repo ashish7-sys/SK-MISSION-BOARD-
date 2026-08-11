@@ -1,0 +1,6 @@
+{
+  "name": "SK MISSION BOARD",
+  "description": "Class 10 Educational App by SK ACADEMY offering complete syllabus, study notes, PDFs, and YouTube video lectures for Bihar Board and NCERT students.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

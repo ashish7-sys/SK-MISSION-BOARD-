@@ -1,0 +1,20 @@
+{
+  "name": "sk-mission-board",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SK MISSION BOARD — Class 10 Educational Android App",
+  "scripts": {
+    "build": "mkdir -p dist && echo '<html><body>SK MISSION BOARD</body></html>' > dist/index.html",
+    "cap:sync": "npx cap sync android",
+    "cap:copy": "npx cap copy android",
+    "build:apk": "./gradlew assembleRelease",
+    "build:aab": "./gradlew bundleRelease"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.0.0",
+    "@capacitor/core": "^6.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.0.0"
+  }
+}

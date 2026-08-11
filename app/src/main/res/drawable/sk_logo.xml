@@ -1,0 +1,93 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="200dp"
+    android:height="200dp"
+    android:viewportWidth="200"
+    android:viewportHeight="200">
+
+    <!-- Outer Glow Shadow -->
+    <path
+        android:pathData="M 30,10 L 170,10 A 20,20 0 0,1 190,30 L 190,170 A 20,20 0 0,1 170,190 L 30,190 A 20,20 0 0,1 10,170 L 10,30 A 20,20 0 0,1 30,10 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="0"
+                android:startY="0"
+                android:endX="200"
+                android:endY="200"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#FF7C4DFF" />
+                <item android:offset="0.5" android:color="#FF1A1C29" />
+                <item android:offset="1.0" android:color="#FF00E5FF" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Inner Dark Background -->
+    <path
+        android:pathData="M 32,14 L 168,14 A 18,18 0 0,1 186,32 L 186,168 A 18,18 0 0,1 168,186 L 32,186 A 18,18 0 0,1 14,168 L 14,32 A 18,18 0 0,1 32,14 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="0"
+                android:startY="0"
+                android:endX="200"
+                android:endY="200"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#FF1E1233" />
+                <item android:offset="0.6" android:color="#FF111322" />
+                <item android:offset="1.0" android:color="#FF0A0E1A" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Golden Border Accent -->
+    <path
+        android:pathData="M 32,14 L 168,14 A 18,18 0 0,1 186,32 L 186,168 A 18,18 0 0,1 168,186 L 32,186 A 18,18 0 0,1 14,168 L 14,32 A 18,18 0 0,1 32,14 Z"
+        android:strokeWidth="2.5">
+        <aapt:attr name="android:strokeColor">
+            <gradient
+                android:startX="0"
+                android:startY="0"
+                android:endX="200"
+                android:endY="200"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#FFFFD700" />
+                <item android:offset="0.5" android:color="#FF7C4DFF" />
+                <item android:offset="1.0" android:color="#FF00E5FF" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Top Graduation Cap Graphic -->
+    <path
+        android:pathData="M 100,32 L 155,54 L 100,76 L 45,54 Z"
+        android:fillColor="#FFFFD700" />
+    <path
+        android:pathData="M 62,63 L 62,85 C 62,98 138,98 138,85 L 138,63"
+        android:fillColor="#FFB38800" />
+    <path
+        android:pathData="M 145,58 L 145,95 C 145,98 141,98 141,95 L 141,58 Z"
+        android:fillColor="#FFFFD700" />
+
+    <!-- Stylized 'S' -->
+    <path
+        android:pathData="M 85,108 C 85,100 60,98 60,114 C 60,132 86,130 86,146 C 86,162 60,160 58,152"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="10"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+
+    <!-- Stylized 'K' -->
+    <path
+        android:pathData="M 112,104 L 112,156 M 142,106 L 114,130 L 144,156"
+        android:strokeColor="#FF00E5FF"
+        android:strokeWidth="10"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+
+    <!-- Mission Star Banner Accent at Bottom -->
+    <path
+        android:pathData="M 45,172 L 155,172"
+        android:strokeColor="#FFFFD700"
+        android:strokeWidth="3"
+        android:strokeLineCap="round" />
+</vector>
