@@ -59,7 +59,7 @@ document.addEventListener('DOMContentLoaded', function () {
       r: 5,
       maxR: maxR,
       color: colors[colorIndex],
-      lineWidth: 4,
+      lineWidth: 2,
       speed: 8,
       alpha: 1.0
     });

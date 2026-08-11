@@ -86,7 +86,7 @@ class TouchLightOverlayView @JvmOverloads constructor(
                     r = 5f * density,
                     maxR = maxR,
                     color = color,
-                    lineWidth = 4f * density,
+                    lineWidth = 2f * density,
                     speed = 8f * density,
                     alpha = 1.0f
                 )
