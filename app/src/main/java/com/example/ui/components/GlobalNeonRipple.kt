@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.changedToDown
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -29,7 +30,7 @@ fun GlobalNeonRippleOverlay(
                     while (true) {
                         val event = awaitPointerEvent(PointerEventPass.Initial)
                         for (change in event.changes) {
-                            if (change.pressed && !change.previousPressed) {
+                            if (change.changedToDown()) {
                                 overlayViewRef?.addWave(change.position.x, change.position.y)
                             }
                         }

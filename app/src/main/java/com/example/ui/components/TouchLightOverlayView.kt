@@ -1,12 +1,13 @@
 package com.example.ui.components
 
 import android.content.Context
-import android.graphics.*
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.RectF
 import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
-import android.animation.ValueAnimator
-import android.view.animation.LinearInterpolator
 import kotlin.math.hypot
 
 class TouchLightOverlayView @JvmOverloads constructor(
@@ -14,238 +15,133 @@ class TouchLightOverlayView @JvmOverloads constructor(
     attrs: AttributeSet? = null
 ) : View(context, attrs) {
 
-    private data class Wave(
+    private class Wave(
         val x: Float,
         val y: Float,
+        var r: Float,
+        val maxR: Float,
         val color: Int,
-        val startTime: Long,
-        val duration: Long = 1500L
+        val lineWidth: Float,
+        val speed: Float,
+        var alpha: Float = 1.0f
     )
 
     private val waves = mutableListOf<Wave>()
-
     private var colorIndex = 0
 
+    // 20 Bright Sequential Neon Colors (Same as reference video & JS code)
     private val colors = intArrayOf(
-        Color.rgb(0, 168, 255),
-        Color.rgb(255, 212, 0),
-        Color.rgb(57, 255, 20),
-        Color.rgb(255, 23, 68),
-        Color.rgb(176, 38, 255),
-        Color.rgb(0, 255, 255),
-        Color.rgb(255, 109, 0),
-        Color.rgb(255, 0, 168),
-        Color.rgb(124, 77, 255),
-        Color.rgb(0, 230, 118),
-        Color.rgb(255, 234, 0),
-        Color.rgb(0, 184, 212),
-        Color.rgb(255, 64, 129),
-        Color.rgb(118, 255, 3),
-        Color.rgb(101, 31, 255),
-        Color.rgb(255, 145, 0),
-        Color.rgb(24, 255, 255),
-        Color.rgb(245, 0, 87),
-        Color.rgb(213, 0, 249),
-        Color.rgb(100, 255, 218)
+        Color.parseColor("#00f3ff"),
+        Color.parseColor("#ffe600"),
+        Color.parseColor("#00ff66"),
+        Color.parseColor("#ff0055"),
+        Color.parseColor("#ff00a0"),
+        Color.parseColor("#9d00ff"),
+        Color.parseColor("#ff6600"),
+        Color.parseColor("#a6ff00"),
+        Color.parseColor("#00a6ff"),
+        Color.parseColor("#ffd700"),
+        Color.parseColor("#e000ff"),
+        Color.parseColor("#00ffd5"),
+        Color.parseColor("#ff4365"),
+        Color.parseColor("#00ff9f"),
+        Color.parseColor("#ffaa00"),
+        Color.parseColor("#3a00ff"),
+        Color.parseColor("#ff003c"),
+        Color.parseColor("#00e5ff"),
+        Color.parseColor("#d4ff00"),
+        Color.parseColor("#ff007f")
     )
 
-    private val wavePaint =
-        Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            style = Paint.Style.STROKE
-            strokeWidth = 3f
-        }
+    private val wavePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+    }
 
-    private val glowPaint =
-        Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            style = Paint.Style.STROKE
-            strokeWidth = 3f
-        }
+    private val glowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+    }
 
-    private var animator: ValueAnimator? = null
+    private val glowTargetBounds = mutableMapOf<String, RectF>()
 
     init {
         setLayerType(View.LAYER_TYPE_SOFTWARE, null)
-
         isClickable = false
         isFocusable = false
     }
 
     fun addWave(x: Float, y: Float) {
+        val density = context.resources.displayMetrics.density
+        val w = if (width > 0) width.toFloat() else 1080f
+        val h = if (height > 0) height.toFloat() else 1920f
+        val maxR = hypot(w.toDouble(), h.toDouble()).toFloat() * 1.2f
 
         val color = colors[colorIndex]
-
         colorIndex = (colorIndex + 1) % colors.size
 
-        waves.add(
-            Wave(
-                x = x,
-                y = y,
-                color = color,
-                startTime = System.currentTimeMillis()
-            )
-        )
-
-        startAnimation()
-    }
-
-    private fun startAnimation() {
-
-        if (animator?.isRunning == true) {
-            invalidate()
-            return
-        }
-
-        animator = ValueAnimator.ofFloat(0f, 1f).apply {
-
-            duration = 1500L
-
-            interpolator = LinearInterpolator()
-
-            repeatCount = ValueAnimator.INFINITE
-
-            addUpdateListener {
-
-                val now = System.currentTimeMillis()
-
-                waves.removeAll { wave ->
-                    now - wave.startTime > wave.duration
-                }
-
-                invalidate()
-
-                if (waves.isEmpty()) {
-                    cancel()
-                    animator = null
-                }
-            }
-
-            start()
-        }
-    }
-
-    override fun onTouchEvent(
-        event: MotionEvent
-    ): Boolean {
-
-        if (event.actionMasked ==
-            MotionEvent.ACTION_DOWN
-        ) {
-
-            addWave(
-                event.x,
-                event.y
+        synchronized(waves) {
+            waves.add(
+                Wave(
+                    x = x,
+                    y = y,
+                    r = 10f * density,
+                    maxR = maxR,
+                    color = color,
+                    lineWidth = 24f * density,
+                    speed = 18f * density,
+                    alpha = 1.0f
+                )
             )
         }
+        postInvalidateOnAnimation()
+    }
 
-        // Never consume the touch.
-        return false
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        if (event.actionMasked == MotionEvent.ACTION_DOWN || event.actionMasked == MotionEvent.ACTION_POINTER_DOWN) {
+            val pointerIndex = event.actionIndex
+            addWave(event.getX(pointerIndex), event.getY(pointerIndex))
+        }
+        return false // Don't consume touch, let buttons work
     }
 
     override fun onDraw(canvas: Canvas) {
-
         super.onDraw(canvas)
 
-        if (waves.isEmpty()) return
+        val density = context.resources.displayMetrics.density
 
-        val now = System.currentTimeMillis()
+        synchronized(waves) {
+            if (waves.isEmpty()) return
 
-        val maxRadius = hypot(
-            width.toDouble(),
-            height.toDouble()
-        ).toFloat() * 1.25f
+            val iterator = waves.iterator()
+            while (iterator.hasNext()) {
+                val w = iterator.next()
+                w.r += w.speed
+                w.alpha = (1.0f - (w.r / w.maxR)).coerceIn(0.0f, 1.0f)
 
-        for (wave in waves) {
+                if (w.alpha > 0.001f) {
+                    val alphaInt = (w.alpha * 255).toInt().coerceIn(0, 255)
+                    val strokeColor = Color.argb(
+                        alphaInt,
+                        Color.red(w.color),
+                        Color.green(w.color),
+                        Color.blue(w.color)
+                    )
 
-            val elapsed =
-                now - wave.startTime
+                    wavePaint.color = strokeColor
+                    wavePaint.strokeWidth = w.lineWidth
+                    wavePaint.setShadowLayer(30f * density, 0f, 0f, strokeColor)
 
-            val progress =
-                (elapsed.toFloat() / wave.duration)
-                    .coerceIn(0f, 1f)
-
-            val radius =
-                25f + maxRadius * progress
-
-            val alpha = when {
-                progress < 0.08f ->
-                    progress / 0.08f * 220f
-
-                progress > 0.75f ->
-                    (1f - progress) / 0.25f * 150f
-
-                else ->
-                    170f
+                    canvas.drawCircle(w.x, w.y, w.r, wavePaint)
+                } else {
+                    iterator.remove()
+                }
             }
 
-            val waveColor = Color.argb(
-                alpha.toInt().coerceIn(0, 255),
-                Color.red(wave.color),
-                Color.green(wave.color),
-                Color.blue(wave.color)
-            )
+            drawEdgeGlow(canvas)
 
-            wavePaint.color = waveColor
-            wavePaint.strokeWidth = 3f
-
-            wavePaint.setShadowLayer(
-                25f,
-                0f,
-                0f,
-                waveColor
-            )
-
-            /*
-             * Main travelling light wave.
-             */
-            canvas.drawCircle(
-                wave.x,
-                wave.y,
-                radius,
-                wavePaint
-            )
-
-            /*
-             * Soft outer glow.
-             */
-            val outerColor = Color.argb(
-                (alpha * 0.25f)
-                    .toInt()
-                    .coerceIn(0, 255),
-                Color.red(wave.color),
-                Color.green(wave.color),
-                Color.blue(wave.color)
-            )
-
-            wavePaint.color = outerColor
-            wavePaint.strokeWidth = 12f
-
-            canvas.drawCircle(
-                wave.x,
-                wave.y,
-                radius,
-                wavePaint
-            )
+            if (waves.isNotEmpty()) {
+                postInvalidateOnAnimation()
+            }
         }
-
-        drawEdgeGlow(canvas, now)
-    }
-
-    private val glowTargets =
-        mutableListOf<View>()
-
-    private val glowTargetBounds =
-        mutableMapOf<String, RectF>()
-
-    fun registerGlowTarget(view: View) {
-
-        if (!glowTargets.contains(view)) {
-            glowTargets.add(view)
-        }
-    }
-
-    fun unregisterGlowTarget(view: View) {
-
-        glowTargets.remove(view)
     }
 
     fun registerGlowTargetBounds(id: String, bounds: RectF) {
@@ -256,12 +152,10 @@ class TouchLightOverlayView @JvmOverloads constructor(
         glowTargetBounds.remove(id)
     }
 
-    private fun drawEdgeGlow(
-        canvas: Canvas,
-        now: Long
-    ) {
+    private fun drawEdgeGlow(canvas: Canvas) {
+        if (glowTargetBounds.isEmpty()) return
 
-        if (glowTargets.isEmpty() && glowTargetBounds.isEmpty()) return
+        val density = context.resources.displayMetrics.density
 
         for ((_, bounds) in glowTargetBounds) {
             val left = bounds.left
@@ -275,27 +169,22 @@ class TouchLightOverlayView @JvmOverloads constructor(
             var strongestGlow = 0f
             var strongestColor = Color.TRANSPARENT
 
-            for (wave in waves) {
-                val elapsed = now - wave.startTime
-                val progress = (elapsed.toFloat() / wave.duration).coerceIn(0f, 1f)
-                val maxRadius = hypot(width.toDouble(), height.toDouble()).toFloat() * 1.25f
-                val radius = 25f + maxRadius * progress
-
-                val distance = hypot(centerX - wave.x, centerY - wave.y)
-                val difference = kotlin.math.abs(distance - radius)
-                val glowWidth = 100f
+            for (w in waves) {
+                val distance = hypot((centerX - w.x).toDouble(), (centerY - w.y).toDouble()).toFloat()
+                val difference = kotlin.math.abs(distance - w.r)
+                val glowWidth = 120f * density
 
                 if (difference < glowWidth) {
-                    val intensity = 1f - difference / glowWidth
+                    val intensity = (1f - (difference / glowWidth)) * w.alpha
                     if (intensity > strongestGlow) {
                         strongestGlow = intensity
-                        strongestColor = wave.color
+                        strongestColor = w.color
                     }
                 }
             }
 
             if (strongestGlow > 0.01f) {
-                val alpha = (strongestGlow * 230f).toInt().coerceIn(0, 230)
+                val alpha = (strongestGlow * 255f).toInt().coerceIn(0, 255)
                 val glowColor = Color.argb(
                     alpha,
                     Color.red(strongestColor),
@@ -304,9 +193,9 @@ class TouchLightOverlayView @JvmOverloads constructor(
                 )
 
                 glowPaint.color = glowColor
-                glowPaint.strokeWidth = 2f + strongestGlow * 4f
+                glowPaint.strokeWidth = (3f + strongestGlow * 6f) * density
                 glowPaint.setShadowLayer(
-                    18f + strongestGlow * 25f,
+                    (20f + strongestGlow * 30f) * density,
                     0f,
                     0f,
                     glowColor
@@ -315,162 +204,15 @@ class TouchLightOverlayView @JvmOverloads constructor(
                 val cornerRadius = minOf(right - left, bottom - top) * 0.18f
 
                 canvas.drawRoundRect(
-                    left - 3f,
-                    top - 3f,
-                    right + 3f,
-                    bottom + 3f,
+                    left - 4f * density,
+                    top - 4f * density,
+                    right + 4f * density,
+                    bottom + 4f * density,
                     cornerRadius,
                     cornerRadius,
                     glowPaint
                 )
             }
         }
-
-        val location = IntArray(2)
-
-        for (target in glowTargets) {
-
-            if (!target.isShown) continue
-
-            target.getLocationOnScreen(location)
-
-            val left = location[0].toFloat()
-            val top = location[1].toFloat()
-
-            val right =
-                left + target.width
-
-            val bottom =
-                top + target.height
-
-            val centerX =
-                (left + right) / 2f
-
-            val centerY =
-                (top + bottom) / 2f
-
-            var strongestGlow = 0f
-            var strongestColor =
-                Color.TRANSPARENT
-
-            for (wave in waves) {
-
-                val elapsed =
-                    now - wave.startTime
-
-                val progress =
-                    (elapsed.toFloat() /
-                            wave.duration)
-                        .coerceIn(0f, 1f)
-
-                val maxRadius =
-                    hypot(
-                        width.toDouble(),
-                        height.toDouble()
-                    ).toFloat() * 1.25f
-
-                val radius =
-                    25f +
-                    maxRadius * progress
-
-                val distance =
-                    hypot(
-                        centerX - wave.x,
-                        centerY - wave.y
-                    )
-
-                val difference =
-                    kotlin.math.abs(
-                        distance - radius
-                    )
-
-                val glowWidth = 100f
-
-                if (difference < glowWidth) {
-
-                    val intensity =
-                        1f -
-                        difference / glowWidth
-
-                    if (intensity >
-                        strongestGlow) {
-
-                        strongestGlow =
-                            intensity
-
-                        strongestColor =
-                            wave.color
-                    }
-                }
-            }
-
-            if (strongestGlow > 0.01f) {
-
-                val alpha =
-                    (strongestGlow * 230f)
-                        .toInt()
-                        .coerceIn(0, 230)
-
-                val glowColor =
-                    Color.argb(
-                        alpha,
-                        Color.red(
-                            strongestColor
-                        ),
-                        Color.green(
-                            strongestColor
-                        ),
-                        Color.blue(
-                            strongestColor
-                        )
-                    )
-
-                glowPaint.color =
-                    glowColor
-
-                glowPaint.strokeWidth =
-                    2f +
-                    strongestGlow * 4f
-
-                glowPaint.setShadowLayer(
-                    18f +
-                    strongestGlow * 25f,
-                    0f,
-                    0f,
-                    glowColor
-                )
-
-                val cornerRadius =
-                    minOf(
-                        target.width,
-                        target.height
-                    ) * 0.18f
-
-                canvas.drawRoundRect(
-                    left - 3f,
-                    top - 3f,
-                    right + 3f,
-                    bottom + 3f,
-                    cornerRadius,
-                    cornerRadius,
-                    glowPaint
-                )
-            }
-        }
-    }
-
-    override fun onDetachedFromWindow() {
-
-        animator?.cancel()
-
-        animator = null
-
-        waves.clear()
-
-        glowTargets.clear()
-
-        glowTargetBounds.clear()
-
-        super.onDetachedFromWindow()
     }
 }
