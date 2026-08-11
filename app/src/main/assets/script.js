@@ -59,8 +59,8 @@ document.addEventListener('DOMContentLoaded', function () {
       r: 10,
       maxR: maxR,
       color: colors[colorIndex],
-      lineWidth: 24,
-      speed: 18,
+      lineWidth: 12,
+      speed: 9,
       alpha: 1.0
     });
     colorIndex = (colorIndex + 1) % colors.length;
