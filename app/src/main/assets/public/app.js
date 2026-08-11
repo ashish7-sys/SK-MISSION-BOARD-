@@ -59,7 +59,7 @@ document.addEventListener('DOMContentLoaded', function () {
       r: 5,
       maxR: maxR,
       color: colors[colorIndex],
-      lineWidth: 2,
+      lineWidth: 3.5,
       speed: 8,
       alpha: 1.0
     });
@@ -89,6 +89,21 @@ document.addEventListener('DOMContentLoaded', function () {
       const wWidth = getWidth();
       const wHeight = getHeight();
       ctx.clearRect(0, 0, wWidth, wHeight);
+
+      // Clip out card/icon interiors so wave rings pass around icons instead of over them
+      ctx.save();
+      const cards = document.querySelectorAll('.card, [data-glow-target], button, .subject-card, .chapter-card, .icon-card');
+      if (cards && cards.length > 0) {
+        ctx.beginPath();
+        ctx.rect(0, 0, wWidth, wHeight);
+        cards.forEach(card => {
+          const r = card.getBoundingClientRect();
+          if (r.width > 0 && r.height > 0) {
+            ctx.rect(r.left, r.top, r.width, r.height);
+          }
+        });
+        ctx.clip('evenodd');
+      }
 
       for (let i = waves.length - 1; i >= 0; i--) {
         const w = waves[i];
@@ -136,6 +151,7 @@ document.addEventListener('DOMContentLoaded', function () {
           waves.splice(i, 1);
         }
       }
+      ctx.restore();
     } catch (err) {
       console.error('[GlowSweep] Render error:', err);
     }

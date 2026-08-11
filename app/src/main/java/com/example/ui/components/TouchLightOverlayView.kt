@@ -86,7 +86,7 @@ class TouchLightOverlayView @JvmOverloads constructor(
                     r = 5f * density,
                     maxR = maxR,
                     color = color,
-                    lineWidth = 2f * density,
+                    lineWidth = 3.5f * density,
                     speed = 8f * density,
                     alpha = 1.0f
                 )
@@ -111,6 +111,23 @@ class TouchLightOverlayView @JvmOverloads constructor(
         synchronized(waves) {
             if (waves.isEmpty()) return
 
+            // Clip out card interiors so wave rings pass around icons instead of drawing on top of them
+            val hasTargetBounds = glowTargetBounds.isNotEmpty()
+            if (hasTargetBounds) {
+                canvas.save()
+                val clipPath = android.graphics.Path()
+                for ((_, bounds) in glowTargetBounds) {
+                    val cornerRadius = minOf(bounds.width(), bounds.height()) * 0.18f
+                    clipPath.addRoundRect(bounds, cornerRadius, cornerRadius, android.graphics.Path.Direction.CW)
+                }
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                    canvas.clipOutPath(clipPath)
+                } else {
+                    @Suppress("DEPRECATION")
+                    canvas.clipPath(clipPath, android.graphics.Region.Op.DIFFERENCE)
+                }
+            }
+
             val iterator = waves.iterator()
             while (iterator.hasNext()) {
                 val w = iterator.next()
@@ -134,6 +151,10 @@ class TouchLightOverlayView @JvmOverloads constructor(
                 } else {
                     iterator.remove()
                 }
+            }
+
+            if (hasTargetBounds) {
+                canvas.restore()
             }
 
             drawEdgeGlow(canvas)
@@ -163,8 +184,9 @@ class TouchLightOverlayView @JvmOverloads constructor(
             val right = bounds.right
             val bottom = bounds.bottom
 
-            val centerX = (left + right) / 2f
-            val centerY = (top + bottom) / 2f
+            val cardWidth = right - left
+            val cardHeight = bottom - top
+            val cardDiag = hypot(cardWidth.toDouble(), cardHeight.toDouble()).toFloat()
 
             var strongestGlow = 0f
             var strongestColor = Color.TRANSPARENT
@@ -172,21 +194,22 @@ class TouchLightOverlayView @JvmOverloads constructor(
             // Iterate waves in REVERSE order so the most recently spawned wave takes precedence!
             for (i in waves.indices.reversed()) {
                 val w = waves[i]
-                val distToCenter = hypot((centerX - w.x).toDouble(), (centerY - w.y).toDouble()).toFloat()
-                val difference = kotlin.math.abs(distToCenter - w.r)
-                val glowWidth = 120f * density
 
-                // Check if tap was on or near this rect
-                val isTapNear = w.x >= (left - 40f * density) && w.x <= (right + 40f * density) &&
-                                w.y >= (top - 40f * density) && w.y <= (bottom + 40f * density)
+                // Distance from wave center (w.x, w.y) to nearest edge on rectangle
+                val dx = maxOf(0f, maxOf(left - w.x, w.x - right))
+                val dy = maxOf(0f, maxOf(top - w.y, w.y - bottom))
+                val distToNearestEdge = hypot(dx.toDouble(), dy.toDouble()).toFloat()
 
-                if (difference < glowWidth || isTapNear) {
-                    // Recency weight: newer waves receive priority boost so the tapped wave color dominates!
-                    val recencyBoost = 1.0f + ((i + 1).toFloat() / waves.size.toFloat()) * 1.5f
-                    val tapBoost = if (isTapNear && w.r < (150f * density)) 2.0f else 1.0f
-                    
-                    val proximity = (1f - (difference / glowWidth)).coerceIn(0.1f, 1.0f)
-                    val intensity = proximity * w.alpha * recencyBoost * tapBoost
+                // Wave progress relative to icon arrival:
+                val diff = w.r - distToNearestEdge
+                val pulseWidth = 32f * density
+
+                // Only glow WHEN the expanding wave ring reaches/sweeps across the icon!
+                if (diff >= -8f * density && diff <= (cardDiag + pulseWidth)) {
+                    val bandRange = cardDiag + pulseWidth
+                    val normPos = ((diff + 8f * density) / (bandRange + 8f * density)).coerceIn(0f, 1f)
+                    val pulse = kotlin.math.sin(normPos * Math.PI.toFloat())
+                    val intensity = pulse * w.alpha
 
                     if (intensity > strongestGlow) {
                         strongestGlow = intensity
@@ -195,8 +218,8 @@ class TouchLightOverlayView @JvmOverloads constructor(
                 }
             }
 
-            if (strongestGlow > 0.01f && strongestColor != Color.TRANSPARENT) {
-                val alpha = (minOf(1f, strongestGlow) * 220f).toInt().coerceIn(0, 255)
+            if (strongestGlow > 0.02f && strongestColor != Color.TRANSPARENT) {
+                val alpha = (minOf(1f, strongestGlow) * 235f).toInt().coerceIn(0, 255)
                 val glowColor = Color.argb(
                     alpha,
                     Color.red(strongestColor),
@@ -205,21 +228,23 @@ class TouchLightOverlayView @JvmOverloads constructor(
                 )
 
                 glowPaint.color = glowColor
-                glowPaint.strokeWidth = (2.5f + minOf(1f, strongestGlow) * 4f) * density
+                // Edge glow stroke thickness (reduced by 1 point to 2.5dp)
+                glowPaint.strokeWidth = 2.5f * density
+                // Increased glow radius for stronger neon illumination
                 glowPaint.setShadowLayer(
-                    (15f + minOf(1f, strongestGlow) * 20f) * density,
+                    (20f + minOf(1f, strongestGlow) * 25f) * density,
                     0f,
                     0f,
                     glowColor
                 )
 
-                val cornerRadius = minOf(right - left, bottom - top) * 0.18f
+                val cornerRadius = minOf(cardWidth, cardHeight) * 0.18f
 
                 canvas.drawRoundRect(
-                    left - 2f * density,
-                    top - 2f * density,
-                    right + 2f * density,
-                    bottom + 2f * density,
+                    left - 1.5f * density,
+                    top - 1.5f * density,
+                    right + 1.5f * density,
+                    bottom + 1.5f * density,
                     cornerRadius,
                     cornerRadius,
                     glowPaint
