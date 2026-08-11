@@ -10,14 +10,14 @@ html, body {
   overflow: hidden;
 }
 
-/* Background Canvas overlay (Middle Layer - z-index 5) */
+/* Top Overlay Canvas for Light Sweep Effect (ON TOP OF ICONS & UI) */
 #glow-sweep-canvas {
   position: fixed !important;
   top: 0 !important;
   left: 0 !important;
   width: 100vw !important;
   height: 100vh !important;
-  z-index: 5 !important; /* MUST BE ABOVE BODY BACKGROUND BUT BELOW ICONS */
+  z-index: 999999 !important; /* RENDERS ON TOP OF ALL ICONS AND CARDS */
   pointer-events: none !important;
   background: transparent !important;
 }

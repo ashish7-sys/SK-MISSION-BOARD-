@@ -38,7 +38,12 @@ fun GlobalNeonRippleOverlay(
                 }
             }
     ) {
-        // 1. TouchLightOverlayView rendered BEHIND the UI
+        // 1. Content UI rendered below overlay
+        CompositionLocalProvider(LocalTouchLightOverlayView provides overlayViewRef) {
+            content()
+        }
+
+        // 2. TouchLightOverlayView rendered ON TOP OF the UI icons & cards
         AndroidView(
             factory = { context ->
                 TouchLightOverlayView(context).also { view ->
@@ -47,11 +52,6 @@ fun GlobalNeonRippleOverlay(
             },
             modifier = Modifier.fillMaxSize()
         )
-
-        // 2. Foreground Compose UI
-        CompositionLocalProvider(LocalTouchLightOverlayView provides overlayViewRef) {
-            content()
-        }
     }
 }
 
