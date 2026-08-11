@@ -1,14 +1,20 @@
 document.addEventListener('DOMContentLoaded', function () {
-  const canvas = document.getElementById('glow-sweep-canvas');
+  let canvas = document.getElementById('glow-sweep-canvas');
   if (!canvas) {
-    console.error('glow-sweep-canvas element NOT found!');
-    return;
+    canvas = document.createElement('canvas');
+    canvas.id = 'glow-sweep-canvas';
   }
-  console.log('glow-sweep-canvas element found:', canvas);
+  
+  // Ensure canvas is directly prepended as the first child of body
+  if (document.body && document.body.firstChild !== canvas) {
+    document.body.prepend(canvas);
+  }
+
+  console.log('[GlowSweep] Canvas element initialized and prepended to body:', canvas);
 
   const ctx = canvas.getContext('2d');
   if (!ctx) {
-    console.error('2D context not supported on canvas');
+    console.error('[GlowSweep] 2D Context missing on canvas');
     return;
   }
 
@@ -23,17 +29,30 @@ document.addEventListener('DOMContentLoaded', function () {
     '#3a00ff', '#ff003c', '#00e5ff', '#d4ff00', '#ff007f'
   ];
 
+  function getWidth() {
+    return Math.max(document.documentElement ? document.documentElement.clientWidth : 0, window.innerWidth || 0, 360);
+  }
+
+  function getHeight() {
+    return Math.max(document.documentElement ? document.documentElement.clientHeight : 0, window.innerHeight || 0, 640);
+  }
+
   function resize() {
-    canvas.width = window.innerWidth * (window.devicePixelRatio || 1);
-    canvas.height = window.innerHeight * (window.devicePixelRatio || 1);
-    ctx.scale(window.devicePixelRatio || 1, window.devicePixelRatio || 1);
+    const dpr = window.devicePixelRatio || 1;
+    const w = getWidth();
+    const h = getHeight();
+    canvas.width = w * dpr;
+    canvas.height = h * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
 
   window.addEventListener('resize', resize);
   resize();
 
   function addWave(clientX, clientY) {
-    const maxR = Math.hypot(window.innerWidth, window.innerHeight) * 1.2;
+    const w = getWidth();
+    const h = getHeight();
+    const maxR = Math.hypot(w, h) * 1.2;
     waves.push({
       x: clientX,
       y: clientY,
@@ -47,12 +66,15 @@ document.addEventListener('DOMContentLoaded', function () {
     colorIndex = (colorIndex + 1) % colors.length;
   }
 
-  // Pointerdown with capture: true so touches trigger light wave even if UI buttons catch click
+  // Pre-populate with initial test wave on load for visual verification
+  addWave(getWidth() / 2, getHeight() / 2);
+
+  // Pointerdown capture
   window.addEventListener('pointerdown', (e) => {
     addWave(e.clientX, e.clientY);
   }, { capture: true, passive: true });
 
-  // Fallback for touchstart if pointer events are delayed
+  // Touchstart fallback for Android WebView
   window.addEventListener('touchstart', (e) => {
     if (e.touches && e.touches.length > 0) {
       for (let i = 0; i < e.changedTouches.length; i++) {
@@ -64,34 +86,58 @@ document.addEventListener('DOMContentLoaded', function () {
 
   function render() {
     try {
-      ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+      const wWidth = getWidth();
+      const wHeight = getHeight();
+      ctx.clearRect(0, 0, wWidth, wHeight);
 
       for (let i = waves.length - 1; i >= 0; i--) {
         const w = waves[i];
         w.r += w.speed;
         w.alpha = Math.max(0, 1 - (w.r / w.maxR));
 
-        if (w.alpha > 0) {
+        if (w.alpha > 0.01) {
           ctx.save();
           ctx.globalAlpha = w.alpha;
 
-          // Expanding Radial Glow Wave
+          // Android WebView Safe Glow using Radial Gradient & Dual Arc Strokes
+          const innerR = Math.max(0, w.r - w.lineWidth);
+          const outerR = w.r + w.lineWidth;
+          
+          // Outer Soft Glow Pass using Gradient Arc
+          try {
+            const grad = ctx.createRadialGradient(w.x, w.y, innerR, w.x, w.y, outerR);
+            grad.addColorStop(0, 'transparent');
+            grad.addColorStop(0.5, w.color);
+            grad.addColorStop(1, 'transparent');
+
+            ctx.beginPath();
+            ctx.arc(w.x, w.y, w.r, 0, Math.PI * 2);
+            ctx.strokeStyle = grad;
+            ctx.lineWidth = w.lineWidth * 1.8;
+            ctx.stroke();
+          } catch (e) {
+            // Fallback stroke if radial gradient fails
+            ctx.beginPath();
+            ctx.arc(w.x, w.y, w.r, 0, Math.PI * 2);
+            ctx.strokeStyle = w.color;
+            ctx.lineWidth = w.lineWidth;
+            ctx.stroke();
+          }
+
+          // Core Crisp Arc Pass
           ctx.beginPath();
           ctx.arc(w.x, w.y, w.r, 0, Math.PI * 2);
-
-          ctx.strokeStyle = w.color;
-          ctx.lineWidth = w.lineWidth;
-          ctx.shadowColor = w.color;
-          ctx.shadowBlur = 30; // Bright glow outline
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = w.lineWidth * 0.35;
           ctx.stroke();
 
           ctx.restore();
         } else {
-          waves.splice(i, 1); // Auto cleanup memory
+          waves.splice(i, 1);
         }
       }
     } catch (err) {
-      console.error('Error in render loop:', err);
+      console.error('[GlowSweep] Render error:', err);
     }
     requestAnimationFrame(render);
   }
