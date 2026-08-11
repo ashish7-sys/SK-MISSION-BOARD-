@@ -1,3 +1,12 @@
+/* Body background at z-index: 0 */
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #0b0f19;
+  z-index: 0;
+  overflow: hidden;
+}
+
 /* Background Canvas overlay */
 #glow-sweep-canvas {
   position: fixed;
@@ -6,11 +15,11 @@
   width: 100vw;
   height: 100vh;
   pointer-events: none; /* Touches block nahi honge */
-  z-index: 1; /* Icons ke niche rahega */
+  z-index: 2; /* Icons ke niche rahega */
 }
 
 /* Ensure all UI elements sit ABOVE the light wave */
-button, .icon, .card, nav, .key, .ui-item, header {
+button, .icon, .card, nav, .key, .ui-item, header, main, .container, div {
   position: relative;
   z-index: 10;
 }
