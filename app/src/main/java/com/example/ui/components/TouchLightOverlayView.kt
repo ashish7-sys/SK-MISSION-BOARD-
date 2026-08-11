@@ -83,11 +83,11 @@ class TouchLightOverlayView @JvmOverloads constructor(
                 Wave(
                     x = x,
                     y = y,
-                    r = 10f * density,
+                    r = 5f * density,
                     maxR = maxR,
                     color = color,
-                    lineWidth = 12f * density,
-                    speed = 9f * density,
+                    lineWidth = 4f * density,
+                    speed = 8f * density,
                     alpha = 1.0f
                 )
             )
@@ -128,7 +128,7 @@ class TouchLightOverlayView @JvmOverloads constructor(
 
                     wavePaint.color = strokeColor
                     wavePaint.strokeWidth = w.lineWidth
-                    wavePaint.setShadowLayer(30f * density, 0f, 0f, strokeColor)
+                    wavePaint.setShadowLayer(20f * density, 0f, 0f, strokeColor)
 
                     canvas.drawCircle(w.x, w.y, w.r, wavePaint)
                 } else {
@@ -169,22 +169,34 @@ class TouchLightOverlayView @JvmOverloads constructor(
             var strongestGlow = 0f
             var strongestColor = Color.TRANSPARENT
 
-            for (w in waves) {
-                val distance = hypot((centerX - w.x).toDouble(), (centerY - w.y).toDouble()).toFloat()
-                val difference = kotlin.math.abs(distance - w.r)
+            // Iterate waves in REVERSE order so the most recently spawned wave takes precedence!
+            for (i in waves.indices.reversed()) {
+                val w = waves[i]
+                val distToCenter = hypot((centerX - w.x).toDouble(), (centerY - w.y).toDouble()).toFloat()
+                val difference = kotlin.math.abs(distToCenter - w.r)
                 val glowWidth = 120f * density
 
-                if (difference < glowWidth) {
-                    val intensity = (1f - (difference / glowWidth)) * w.alpha
+                // Check if tap was on or near this rect
+                val isTapNear = w.x >= (left - 40f * density) && w.x <= (right + 40f * density) &&
+                                w.y >= (top - 40f * density) && w.y <= (bottom + 40f * density)
+
+                if (difference < glowWidth || isTapNear) {
+                    // Recency weight: newer waves receive priority boost so the tapped wave color dominates!
+                    val recencyBoost = 1.0f + ((i + 1).toFloat() / waves.size.toFloat()) * 1.5f
+                    val tapBoost = if (isTapNear && w.r < (150f * density)) 2.0f else 1.0f
+                    
+                    val proximity = (1f - (difference / glowWidth)).coerceIn(0.1f, 1.0f)
+                    val intensity = proximity * w.alpha * recencyBoost * tapBoost
+
                     if (intensity > strongestGlow) {
                         strongestGlow = intensity
-                        strongestColor = w.color
+                        strongestColor = w.color // Exact wave color!
                     }
                 }
             }
 
-            if (strongestGlow > 0.01f) {
-                val alpha = (strongestGlow * 255f).toInt().coerceIn(0, 255)
+            if (strongestGlow > 0.01f && strongestColor != Color.TRANSPARENT) {
+                val alpha = (minOf(1f, strongestGlow) * 220f).toInt().coerceIn(0, 255)
                 val glowColor = Color.argb(
                     alpha,
                     Color.red(strongestColor),
@@ -193,9 +205,9 @@ class TouchLightOverlayView @JvmOverloads constructor(
                 )
 
                 glowPaint.color = glowColor
-                glowPaint.strokeWidth = (3f + strongestGlow * 6f) * density
+                glowPaint.strokeWidth = (2.5f + minOf(1f, strongestGlow) * 4f) * density
                 glowPaint.setShadowLayer(
-                    (20f + strongestGlow * 30f) * density,
+                    (15f + minOf(1f, strongestGlow) * 20f) * density,
                     0f,
                     0f,
                     glowColor
@@ -204,10 +216,10 @@ class TouchLightOverlayView @JvmOverloads constructor(
                 val cornerRadius = minOf(right - left, bottom - top) * 0.18f
 
                 canvas.drawRoundRect(
-                    left - 4f * density,
-                    top - 4f * density,
-                    right + 4f * density,
-                    bottom + 4f * density,
+                    left - 2f * density,
+                    top - 2f * density,
+                    right + 2f * density,
+                    bottom + 2f * density,
                     cornerRadius,
                     cornerRadius,
                     glowPaint

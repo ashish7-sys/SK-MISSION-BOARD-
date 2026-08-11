@@ -56,11 +56,11 @@ document.addEventListener('DOMContentLoaded', function () {
     waves.push({
       x: clientX,
       y: clientY,
-      r: 10,
+      r: 5,
       maxR: maxR,
       color: colors[colorIndex],
-      lineWidth: 12,
-      speed: 9,
+      lineWidth: 4,
+      speed: 8,
       alpha: 1.0
     });
     colorIndex = (colorIndex + 1) % colors.length;
